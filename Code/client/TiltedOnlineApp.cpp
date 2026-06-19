@@ -7,6 +7,10 @@
 #include <WindowsHook.hpp>
 
 #include <World.h>
+#include <PlayerCharacter.h>
+
+#include <fstream>
+#include <cstdlib>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -22,6 +26,41 @@
 #include <NvidiaUtil.h>
 
 using TiltedPhoques::Debug;
+
+namespace
+{
+struct AutoCfg
+{
+    std::string address = "127.0.0.1";
+    uint16_t port = 10578;
+    std::string password;
+};
+
+// Reads client.cfg (key=value lines) next to logs/tp_client.log; missing file/keys keep defaults.
+AutoCfg ReadAutoCfg()
+{
+    AutoCfg cfg;
+    std::ifstream file(TiltedPhoques::GetPath() / "client.cfg");
+    std::string line;
+    while (std::getline(file, line))
+    {
+        const auto eq = line.find('=');
+        if (eq == std::string::npos)
+            continue;
+        std::string key = line.substr(0, eq);
+        std::string value = line.substr(eq + 1);
+        while (!value.empty() && (value.back() == '\r' || value.back() == '\n' || value.back() == ' ' || value.back() == '\t'))
+            value.pop_back();
+        if (key == "address")
+            cfg.address = value;
+        else if (key == "port")
+            cfg.port = static_cast<uint16_t>(std::strtoul(value.c_str(), nullptr, 10));
+        else if (key == "password")
+            cfg.password = value;
+    }
+    return cfg;
+}
+} // namespace
 
 TiltedOnlineApp::TiltedOnlineApp()
 {
@@ -94,6 +133,23 @@ void TiltedOnlineApp::Update()
     *bAlwaysActive = 1;
 
     World::Get().Update();
+
+    // Config-driven auto-connect: replicates OverlayClient::ProcessConnectMessage so co-op works
+    // even when the CEF overlay never renders under Wine. Fires once, after the player is in-world.
+    static bool s_autoConnected = false;
+    if (!s_autoConnected)
+    {
+        auto* pPlayer = PlayerCharacter::Get();
+        if (pPlayer && pPlayer->GetNiNode() && !World::Get().GetTransport().IsOnline())
+        {
+            const AutoCfg cfg = ReadAutoCfg();
+            World::Get().GetTransport().SetServerPassword(cfg.password);
+            const std::string endpoint = cfg.address + ":" + std::to_string(cfg.port);
+            spdlog::info("Auto-connecting to {}", endpoint);
+            World::Get().GetRunner().Queue([endpoint] { World::Get().GetTransport().Connect(endpoint); });
+            s_autoConnected = true;
+        }
+    }
 }
 
 bool TiltedOnlineApp::Attach()

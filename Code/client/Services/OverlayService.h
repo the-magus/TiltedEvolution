@@ -94,6 +94,7 @@ private:
 
     bool m_active = false;
     bool m_inGame = false;
+    bool m_initialized = false;
 
     entt::scoped_connection m_updateConnection;
     entt::scoped_connection m_connectedConnection;

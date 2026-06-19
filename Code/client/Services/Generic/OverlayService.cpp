@@ -138,7 +138,8 @@ void OverlayService::Create(RenderSystemD3D11* apRenderSystem) noexcept
     m_pProvider = TiltedPhoques::MakeUnique<D3D11RenderProvider>(apRenderSystem);
     m_pOverlay = new OverlayApp(m_pProvider.get(), new ::OverlayClient(m_transport, m_pProvider->Create()));
 
-    if (!m_pOverlay->Initialize())
+    m_initialized = m_pOverlay->Initialize();
+    if (!m_initialized)
     {
         spdlog::error("Overlay could not be initialized");
         if (int32_t exitCode = CefGetExitCode())
@@ -147,11 +148,15 @@ void OverlayService::Create(RenderSystemD3D11* apRenderSystem) noexcept
         }
     }
 
-    m_pOverlay->GetClient()->Create();
+    if (m_initialized)
+        m_pOverlay->GetClient()->Create();
 }
 
 void OverlayService::Render() noexcept
 {
+    if (!m_initialized)
+        return;
+
     auto pPlayer = PlayerCharacter::Get();
     bool inGame = pPlayer && pPlayer->GetNiNode();
     if (inGame && !m_inGame)
@@ -164,11 +169,17 @@ void OverlayService::Render() noexcept
 
 void OverlayService::Reset() const noexcept
 {
+    if (!m_initialized)
+        return;
+
     m_pOverlay->GetClient()->Reset();
 }
 
 void OverlayService::Reload() noexcept
 {
+    if (!m_initialized)
+        return;
+
     SetInGame(false);
     SetActive(false);
     GetOverlayApp()->GetClient()->GetBrowser()->Reload();
@@ -180,11 +191,17 @@ void OverlayService::Reload() noexcept
 
 void OverlayService::Initialize() noexcept
 {
+    if (!m_initialized)
+        return;
+
     m_pOverlay->ExecuteAsync("init");
 }
 
 void OverlayService::SetActive(bool aActive) noexcept
 {
+    if (!m_initialized)
+        return;
+
     if (!m_inGame)
         return;
     if (m_active == aActive)
@@ -202,6 +219,9 @@ bool OverlayService::GetActive() const noexcept
 
 void OverlayService::SetInGame(bool aInGame) noexcept
 {
+    if (!m_initialized)
+        return;
+
     if (m_inGame == aInGame)
         return;
     m_inGame = aInGame;

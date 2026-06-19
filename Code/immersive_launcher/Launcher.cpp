@@ -18,6 +18,7 @@
 #include "utils/Registry.h"
 
 #include <BranchInfo.h>
+#include <cstdio>
 
 // These symbols are defined within the client code skyrimtogetherclient
 extern void InstallStartHook();
@@ -32,6 +33,17 @@ HICON g_SharedWindowIcon = nullptr;
 namespace launcher
 {
 static LaunchContext* g_context = nullptr;
+
+// Wine-writable file trace next to tp_client.log (personal build only).
+static void Trace(const char* aMsg)
+{
+    FILE* f = _wfopen(L"Z:\\Volumes\\ExternalDrive1TB\\Skyrim_Deployment\\MO2\\mods\\Skyrim Together Reborn\\SkyrimTogetherReborn\\logs\\launcher_trace.log", L"a");
+    if (!f)
+        return;
+    fprintf(f, "%s\n", aMsg);
+    fflush(f);
+    fclose(f);
+}
 
 LaunchContext* GetLaunchContext()
 {
@@ -70,9 +82,11 @@ void SetMaxstdio()
 
 int StartUp(int argc, char** argv)
 {
+    Trace("A:enter");
     bool askSelect = (GetAsyncKeyState(VK_SPACE) & 0x8000);
     if (!HandleArguments(argc, argv, askSelect))
         return -1;
+    Trace("B:args-ok");
 
     // TODO(Force): Make some InitSharedResources func.
     g_SharedWindowIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(102));
@@ -85,6 +99,7 @@ int StartUp(int argc, char** argv)
 
     if (!EarlyInstallSucceeded())
         DIE_NOW(L"Early load install failed. Tell Force about this.");
+    Trace("C:earlyinstall-ok");
 
     auto LC = std::make_unique<LaunchContext>();
     g_context = LC.get();
@@ -101,23 +116,30 @@ int StartUp(int argc, char** argv)
         if (ec)
             DIE_NOW(ec);
     }
+    Trace("D:compat-ok");
 
     if (!oobe::SelectInstall(askSelect))
         DIE_NOW(L"Failed to select game install.");
+    Trace("E:selectinstall-ok");
 
     // Bind path environment.
     loader::InstallPathRouting(LC->gamePath);
     steam::Load(LC->gamePath);
+    Trace("F:pathroute-steam-ok");
 
     if (!LoadProgram(*LC))
         return 3;
+    Trace("G:loadprogram-ok");
 
     InstallStartHook();
+    Trace("H:starthook-ok");
     // Initialize all hooks before calling game init
     // TiltedPhoques::Initializer::RunAll();
     RunTiltedInit(LC->gamePath, LC->Version);
+    Trace("I:tiltedinit-ok");
 
     // This shouldn't return until the game is killed
+    Trace("J:pre-gamemain");
     LC->gameMain();
     return 0;
 }
@@ -127,15 +149,18 @@ bool LoadProgram(LaunchContext& LC)
     auto content = TiltedPhoques::LoadFile(LC.exePath);
     if (content.empty())
         DIE_NOW(L"Failed to mount game executable");
+    Trace("G0:file-mounted");
 
     LC.Version = QueryFileVersion(LC.exePath.c_str());
     if (LC.Version.empty())
         DIE_NOW(L"Failed to query game version");
+    Trace("G1:version-ok");
     LC.SetLoaded();
 
     ExeLoader loader(CurrentTarget.exeLoadSz);
     if (!loader.Load(reinterpret_cast<uint8_t*>(content.data())))
         DIE_NOW(L"Fatal error while mapping executable");
+    Trace("G2:map-ok");
 
     LC.gameMain = loader.GetEntryPoint();
     return true;
