@@ -11,6 +11,8 @@
 
 #include <fstream>
 #include <cstdlib>
+#include <exception>
+#include <cstdio>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -26,6 +28,9 @@
 #include <NvidiaUtil.h>
 
 using TiltedPhoques::Debug;
+
+// launcher::Trace lives in immersive_launcher/Launcher.cpp (whole-archive-linked).
+namespace launcher { void Trace(const char*); }
 
 namespace
 {
@@ -92,15 +97,35 @@ void* TiltedOnlineApp::GetMainAddress() const
 
 bool TiltedOnlineApp::BeginMain()
 {
-    World::Create();
-    World::Get().ctx().at<DiscordService>().Init();
-    World::Get().ctx().emplace<RenderSystemD3D11>(World::Get().ctx().at<OverlayService>(), World::Get().ctx().at<ImguiService>());
+    try
+    {
+        launcher::Trace("B1:pre-world");
+        World::Create();
+        launcher::Trace("B2:pre-discord");
+        World::Get().ctx().at<DiscordService>().Init();
+        launcher::Trace("B3:pre-render");
+        World::Get().ctx().emplace<RenderSystemD3D11>(World::Get().ctx().at<OverlayService>(), World::Get().ctx().at<ImguiService>());
 
-    LoadScriptExender();
+        launcher::Trace("B4:pre-script");
+        LoadScriptExender();
+        launcher::Trace("B5:post-script");
 
-    // TODO: Figure out a way to un-blacklist NvCamera64.dll (see DllBlocklist.cpp). Then this hack can be removed
-    if (IsNvidiaOverlayLoaded())
-        ApplyNvidiaFix();
+        // TODO: Figure out a way to un-blacklist NvCamera64.dll (see DllBlocklist.cpp). Then this hack can be removed
+        if (IsNvidiaOverlayLoaded())
+            ApplyNvidiaFix();
+
+        launcher::Trace("B6:beginmain-ret");
+    }
+    catch (const std::exception& e)
+    {
+        char buf[256];
+        sprintf_s(buf, "BEGINMAIN-THROW std::exception: %s", e.what());
+        launcher::Trace(buf);
+    }
+    catch (...)
+    {
+        launcher::Trace("BEGINMAIN-THROW unknown");
+    }
 
     return true;
 }
