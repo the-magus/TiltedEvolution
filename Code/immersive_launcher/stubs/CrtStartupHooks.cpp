@@ -32,14 +32,22 @@ void WINAPI TP_RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags, DWO
     RaiseException(dwExceptionCode, dwExceptionFlags, nNumberOfArguments, lpArguments);
 }
 
-// --- Early-boot exit/exception forensics (personal Wine build) -------------
-// Pure observation: the VEH only logs then continues the search; the exit hooks
-// log the caller, then forward to the real API. game RVA = addr - module base,
+// --- Early-boot forensics + SEH-table-under-Wine workaround -----------------
+// The exit hooks log deliberate exits; the VEH neutralizes the thread-naming
+// exception process-wide and logs hard faults. game RVA = addr - module base,
 // valid because ExeLoader maps SkyrimSE.exe over GetModuleHandleW(nullptr).
 static LONG CALLBACK TP_ForensicVeh(PEXCEPTION_POINTERS apInfo)
 {
     const DWORD code = apInfo->ExceptionRecord->ExceptionCode;
-    if ((code & 0xF0000000u) == 0xC0000000u) // STATUS_* hard faults; skips 0x406D1388 and C++ EH 0xE06D7363
+
+    // Thread-naming exception: swallow GLOBALLY (every thread/module). STR's TP_RaiseException hook
+    // only covers the game IAT; GNS/CRT worker threads raise it via their own IAT, and Wine then
+    // dispatches it through the manually-mapped image's unresolved unwind tables and tears the
+    // process down. Dismissing it here (no debugger) avoids that SEH-table-under-Wine crash.
+    if (code == 0x406D1388 && !IsDebuggerPresent())
+        return EXCEPTION_CONTINUE_EXECUTION;
+
+    if ((code & 0xF0000000u) == 0xC0000000u) // STATUS_* hard faults
     {
         const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
         const auto addr = reinterpret_cast<uintptr_t>(apInfo->ExceptionRecord->ExceptionAddress);
@@ -47,7 +55,7 @@ static LONG CALLBACK TP_ForensicVeh(PEXCEPTION_POINTERS apInfo)
         sprintf_s(buf, "EXC code=%08X addr=%p game+0x%llX", code, reinterpret_cast<void*>(addr), static_cast<unsigned long long>(addr - base));
         launcher::Trace(buf);
     }
-    return EXCEPTION_CONTINUE_SEARCH; // never alter dispatch
+    return EXCEPTION_CONTINUE_SEARCH;
 }
 
 static void WINAPI TP_ExitProcess(UINT uExitCode)
