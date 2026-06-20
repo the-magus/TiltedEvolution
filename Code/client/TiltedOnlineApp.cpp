@@ -103,10 +103,6 @@ bool TiltedOnlineApp::BeginMain()
     {
         // --- GNS init probe: replicate TiltedConnect Client::Client() init to find the clean-exit point.
         launcher::Trace("P0:probe-start");
-        if (auto* pUtils = SteamNetworkingUtils())
-            pUtils->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Everything,
-                [](ESteamNetworkingSocketsDebugOutputType aType, const char* apMsg)
-                { char gb[600]; sprintf_s(gb, "GNS[%d]: %s", static_cast<int>(aType), apMsg ? apMsg : ""); launcher::Trace(gb); });
         launcher::Trace("P1:pre-gns-init");
         {
             SteamDatagramErrMsg gnsErr{};
