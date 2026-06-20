@@ -27,12 +27,15 @@
 #include <ScriptExtender.h>
 #include <NvidiaUtil.h>
 
-#include <steam/steamnetworkingsockets.h> // GNS init probe (diagnostic)
 
 using TiltedPhoques::Debug;
 
 // launcher::Trace lives in immersive_launcher/Launcher.cpp (whole-archive-linked).
 namespace launcher { void Trace(const char*); }
+
+// libuv (linked via TiltedConnect); C linkage, opaque loop pointer. Used by the uv probe below.
+extern "C" int uv_loop_init(void*);
+extern "C" int uv_loop_close(void*);
 
 namespace
 {
@@ -101,25 +104,19 @@ bool TiltedOnlineApp::BeginMain()
 {
     try
     {
-        // --- GNS init probe: replicate TiltedConnect Client::Client() init to find the clean-exit point.
-        launcher::Trace("P0:probe-start");
-        launcher::Trace("P1:pre-gns-init");
+        // --- uv probe: GNS init confirmed OK (ok=1); test libuv uv_loop_init, the next call
+        // in TiltedConnect Client::Client() before MI-transport. Suspected uv_fatal_error->abort under Wine.
+        launcher::Trace("U0:pre-uvinit");
         {
-            SteamDatagramErrMsg gnsErr{};
-            const bool gnsOk = GameNetworkingSockets_Init(nullptr, gnsErr);
-            char pb[600];
-            sprintf_s(pb, "P2:gns-init ok=%d msg=%s", gnsOk ? 1 : 0, gnsErr);
-            launcher::Trace(pb);
-            launcher::Trace("P3:pre-sns");
-            auto* pIface = SteamNetworkingSockets();
-            char sb[96];
-            sprintf_s(sb, "P4:sns=%p", reinterpret_cast<void*>(pIface));
-            launcher::Trace(sb);
-            if (gnsOk)
-            {
-                GameNetworkingSockets_Kill();
-                launcher::Trace("P5:gns-kill");
-            }
+            void* uvLoop = malloc(8192); // uv_loop_t is a few hundred bytes; 8192 is ample
+            const int uvRc = uvLoop ? uv_loop_init(uvLoop) : -999;
+            char ub[64];
+            sprintf_s(ub, "U1:uvinit r=%d", uvRc);
+            launcher::Trace(ub);
+            if (uvRc == 0)
+                uv_loop_close(uvLoop);
+            free(uvLoop);
+            launcher::Trace("U2:uv-done");
         }
         launcher::Trace("B1:pre-world");
         World::Create();
