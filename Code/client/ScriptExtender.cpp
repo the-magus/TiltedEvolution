@@ -3,9 +3,6 @@
 #include <TiltedOnlinePCH.h>
 #include <VersionDb.h>
 
-// launcher::Trace lives in immersive_launcher/Launcher.cpp (whole-archive-linked).
-namespace launcher { void Trace(const char*); }
-
 namespace
 {
 constexpr wchar_t kScriptExtenderName[] = L"skse64";
@@ -79,7 +76,6 @@ bool IsScriptExtenderLoaded()
 
 void LoadScriptExender()
 {
-    launcher::Trace("S0:script-enter");
     const auto exeVerson{GetSKSEStyleExeVersion()};
 
     // Get the path of the game, where the Script Extender dll resides
@@ -145,9 +141,7 @@ void LoadScriptExender()
                 "logs from the "
                 "Script Extender and its loaded mods.",
                 skseVersion);
-            launcher::Trace("S1:pre-startskse");
             pStartSKSE();
-            launcher::Trace("S2:post-startskse");
             spdlog::info("SKSE is active");
         }
         else

@@ -4,12 +4,9 @@
 
 #include <Events/UpdateEvent.h>
 
-namespace launcher { void Trace(const char*); }
-
 RunnerService::RunnerService(entt::dispatcher& aDispatcher) noexcept
     : m_dispatcher(aDispatcher)
 {
-    launcher::Trace("MI-runner");
 }
 
 void RunnerService::Queue(std::function<void()> aFunctor) noexcept

@@ -7,11 +7,8 @@
 
 #include <Games/TES.h>
 
-namespace launcher { void Trace(const char*); }
-
 ModSystem::ModSystem(entt::dispatcher& aDispatcher) noexcept
 {
-    launcher::Trace("MI-modsystem");
     std::memset(m_standardToServer, 0, sizeof(m_standardToServer));
     // Deal with temporary ids
     m_standardToServer[0xFF] = std::numeric_limits<uint32_t>::max();

@@ -27,62 +27,35 @@
 
 #include <ModCompat/BehaviorVar.h>  
 
-// launcher::Trace lives in immersive_launcher/Launcher.cpp (whole-archive-linked).
-namespace launcher { void Trace(const char*); }
-
 World::World()
     : m_runner(m_dispatcher)
     , m_transport(*this, m_dispatcher)
     , m_modSystem(m_dispatcher)
     , m_lastFrameTime{std::chrono::high_resolution_clock::now()}
 {
-    launcher::Trace("W0:world-body");
     ctx().emplace<ImguiService>();
-    launcher::Trace("W1:imgui");
     ctx().emplace<DiscoveryService>(*this, m_dispatcher);
-    launcher::Trace("W2:discovery");
     ctx().emplace<OverlayService>(*this, m_transport, m_dispatcher);
-    launcher::Trace("W3:overlay");
     ctx().emplace<InputService>(ctx().at<OverlayService>());
-    launcher::Trace("W4:input");
     ctx().emplace<CharacterService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W5:character");
     ctx().emplace<DebugService>(m_dispatcher, *this, m_transport, ctx().at<ImguiService>());
-    launcher::Trace("W6:debug");
     ctx().emplace<PapyrusService>(m_dispatcher);
-    launcher::Trace("W7:papyrus");
     ctx().emplace<DiscordService>(m_dispatcher);
-    launcher::Trace("W8:discord");
     ctx().emplace<ObjectService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W9:object");
     ctx().emplace<CalendarService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W10:calendar");
     ctx().emplace<QuestService>(*this, m_dispatcher);
-    launcher::Trace("W11:quest");
     ctx().emplace<PartyService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W12:party");
     ctx().emplace<ActorValueService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W13:actorvalue");
     ctx().emplace<InventoryService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W14:inventory");
     ctx().emplace<MagicService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W15:magic");
     ctx().emplace<CommandService>(*this, m_transport, m_dispatcher);
-    launcher::Trace("W16:command");
     ctx().emplace<PlayerService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W17:player");
     ctx().emplace<StringCacheService>(m_dispatcher);
-    launcher::Trace("W18:stringcache");
     ctx().emplace<CombatService>(*this, m_transport, m_dispatcher);
-    launcher::Trace("W19:combat");
     ctx().emplace<WeatherService>(*this, m_transport, m_dispatcher);
-    launcher::Trace("W20:weather");
     ctx().emplace<MapService>(*this, m_dispatcher, m_transport);
-    launcher::Trace("W21:map");
 
-    launcher::Trace("Wb:pre-behaviorvar");
     BehaviorVar::Get()->Init();
-    launcher::Trace("Wd:post-behaviorvar");
 }
 
 World::~World() = default;

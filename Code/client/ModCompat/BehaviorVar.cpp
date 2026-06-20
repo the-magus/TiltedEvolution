@@ -682,10 +682,8 @@ TiltedPhoques::Vector<uint64_t> BehaviorVar::SignatureMatches(const uint64_t acH
 
 void BehaviorVar::Init()
 {
-    launcher::Trace("BV0:bv-init");
     // Initialize original (base STR) behaviors so we can search them.
     BehaviorOrig::BehaviorOrigInit();
-    launcher::Trace("BV1:bv-origdone");
 
     // Check if the behaviors folder exists
     std::filesystem::path pBehaviorsPath;

@@ -11,8 +11,6 @@
 
 #include <fstream>
 #include <cstdlib>
-#include <exception>
-#include <cstdio>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -27,13 +25,10 @@
 #include <ScriptExtender.h>
 #include <NvidiaUtil.h>
 
-
 using TiltedPhoques::Debug;
 
-// launcher::Trace lives in immersive_launcher/Launcher.cpp (whole-archive-linked).
-namespace launcher { void Trace(const char*); }
-
-// libuv (linked via TiltedConnect); C linkage, opaque loop pointer. Used by the uv probe below.
+// libuv is linked via TiltedConnect; declared here (opaque loop ptr) so BeginMain can
+// pre-initialize libuv's global Winsock state before GameNetworkingSockets (see BeginMain).
 extern "C" int uv_loop_init(void*);
 extern "C" int uv_loop_close(void*);
 
@@ -102,49 +97,25 @@ void* TiltedOnlineApp::GetMainAddress() const
 
 bool TiltedOnlineApp::BeginMain()
 {
-    try
+    // Pre-initialize libuv's global Winsock state BEFORE GameNetworkingSockets. TransportService's
+    // Client base ctor runs GNS init then uv_loop_init; in that order uv_loop_init aborts under Wine.
+    // A throwaway uv_loop_init here makes the later one a cheap no-op so the ctor completes.
     {
-        // --- uv probe: GNS init confirmed OK (ok=1); test libuv uv_loop_init, the next call
-        // in TiltedConnect Client::Client() before MI-transport. Suspected uv_fatal_error->abort under Wine.
-        launcher::Trace("U0:pre-uvinit");
-        {
-            void* uvLoop = malloc(8192); // uv_loop_t is a few hundred bytes; 8192 is ample
-            const int uvRc = uvLoop ? uv_loop_init(uvLoop) : -999;
-            char ub[64];
-            sprintf_s(ub, "U1:uvinit r=%d", uvRc);
-            launcher::Trace(ub);
-            if (uvRc == 0)
-                uv_loop_close(uvLoop);
-            free(uvLoop);
-            launcher::Trace("U2:uv-done");
-        }
-        launcher::Trace("B1:pre-world");
-        World::Create();
-        launcher::Trace("B2:pre-discord");
-        World::Get().ctx().at<DiscordService>().Init();
-        launcher::Trace("B3:pre-render");
-        World::Get().ctx().emplace<RenderSystemD3D11>(World::Get().ctx().at<OverlayService>(), World::Get().ctx().at<ImguiService>());
-
-        launcher::Trace("B4:pre-script");
-        LoadScriptExender();
-        launcher::Trace("B5:post-script");
-
-        // TODO: Figure out a way to un-blacklist NvCamera64.dll (see DllBlocklist.cpp). Then this hack can be removed
-        if (IsNvidiaOverlayLoaded())
-            ApplyNvidiaFix();
-
-        launcher::Trace("B6:beginmain-ret");
+        void* uvLoop = malloc(8192); // uv_loop_t is a few hundred bytes
+        if (uvLoop && uv_loop_init(uvLoop) == 0)
+            uv_loop_close(uvLoop);
+        free(uvLoop);
     }
-    catch (const std::exception& e)
-    {
-        char buf[256];
-        sprintf_s(buf, "BEGINMAIN-THROW std::exception: %s", e.what());
-        launcher::Trace(buf);
-    }
-    catch (...)
-    {
-        launcher::Trace("BEGINMAIN-THROW unknown");
-    }
+
+    World::Create();
+    World::Get().ctx().at<DiscordService>().Init();
+    World::Get().ctx().emplace<RenderSystemD3D11>(World::Get().ctx().at<OverlayService>(), World::Get().ctx().at<ImguiService>());
+
+    LoadScriptExender();
+
+    // TODO: Figure out a way to un-blacklist NvCamera64.dll (see DllBlocklist.cpp). Then this hack can be removed
+    if (IsNvidiaOverlayLoaded())
+        ApplyNvidiaFix();
 
     return true;
 }
