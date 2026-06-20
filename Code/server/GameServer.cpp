@@ -1,4 +1,4 @@
-﻿#include <Components.h>
+#include <Components.h>
 #include <GameServer.h>
 #include <Packet.hpp>
 
@@ -823,7 +823,7 @@ void GameServer::HandleAuthenticationRequest(const ConnectionId_t aConnectionId,
         // the previous message is a lingering kick, it still gets delivered.
         Kick(aConnectionId);
     };
-#if 1
+#if 0 // wine-coop: version check relaxed for personal co-op (accept stock-version clients)
     // to make our testing life a bit easier.
     if (acRequest->Version != BUILD_COMMIT)
     {
