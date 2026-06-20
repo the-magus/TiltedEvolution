@@ -37,6 +37,9 @@ int StartUp(int argc, char** argv);
 
 void InitClient();
 
+// Wine-writable file trace (personal build only); defined in Launcher.cpp.
+void Trace(const char* aMsg);
+
 bool HandleArguments(int, char**, bool&);
 
 } // namespace launcher

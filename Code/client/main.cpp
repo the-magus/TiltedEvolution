@@ -11,6 +11,10 @@ std::unique_ptr<TiltedOnlineApp> g_appInstance{nullptr};
 
 extern HICON g_SharedWindowIcon;
 
+// launcher::Trace lives in immersive_launcher/Launcher.cpp; this static lib is
+// whole-archive-linked into SkyrimTogether.exe, so the symbol resolves at link.
+namespace launcher { void Trace(const char*); }
+
 static void ShowAddressLibraryError(const wchar_t* apGamePath)
 {
     auto errorDetail = fmt::format(L"Looking for it here: {}\\Data\\SKSE\\Plugins", apGamePath);
@@ -49,5 +53,7 @@ void RunTiltedInit(const std::filesystem::path& acGamePath, const String& aExeVe
 
 void RunTiltedApp()
 {
+    launcher::Trace("L:runtiltedapp");
     g_appInstance->BeginMain();
+    launcher::Trace("M:beginmain-done");
 }

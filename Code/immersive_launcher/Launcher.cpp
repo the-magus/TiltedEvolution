@@ -35,7 +35,7 @@ namespace launcher
 static LaunchContext* g_context = nullptr;
 
 // Wine-writable file trace next to tp_client.log (personal build only).
-static void Trace(const char* aMsg)
+void Trace(const char* aMsg)
 {
     FILE* f = _wfopen(L"Z:\\Volumes\\ExternalDrive1TB\\Skyrim_Deployment\\MO2\\mods\\Skyrim Together Reborn\\SkyrimTogetherReborn\\logs\\launcher_trace.log", L"a");
     if (!f)
@@ -168,6 +168,7 @@ bool LoadProgram(LaunchContext& LC)
 
 void InitClient()
 {
+    Trace("K:initclient");
     // Jump into client code.
     RunTiltedApp();
 }
