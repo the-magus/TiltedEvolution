@@ -25,6 +25,8 @@
 #include <ScriptExtender.h>
 #include <Services/DiscordService.h>
 
+namespace launcher { void Trace(const char*); }
+
 // #include <imgui_internal.h>
 
 static constexpr wchar_t kMO2DllName[] = L"usvfs_x64.dll";
@@ -35,6 +37,7 @@ TransportService::TransportService(World& aWorld, entt::dispatcher& aDispatcher)
     : m_world(aWorld)
     , m_dispatcher(aDispatcher)
 {
+    launcher::Trace("MI-transport");
     m_updateConnection = m_dispatcher.sink<UpdateEvent>().connect<&TransportService::HandleUpdate>(this);
     m_settingsChangeConnection = m_dispatcher.sink<NotifySettingsChange>().connect<&TransportService::HandleNotifySettingsChange>(this);
     m_connectedConnection = m_dispatcher.sink<ConnectedEvent>().connect<&TransportService::HandleConnected>(this);
